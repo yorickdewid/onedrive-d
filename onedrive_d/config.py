@@ -1,9 +1,20 @@
 #!/usr/bin/python
 
 import os
-import threading
-import Queue
-import yaml
+import threading, Queue
+import json
+
+def load_conf():
+	global CONF
+	
+	try:
+		f = open(HOME_PATH + "/.onedrive/user.conf", "r")
+		CONF = json.load(f)
+		f.close()
+		if "rootPath" not in CONF or "exclude" not in CONF:
+			CONF = None
+	except:
+		CONF = None
 
 APP_CREDS = ("000000004010C916", "PimIrUibJfsKsMcd0SqwPBwMTV7NDgYi")
 
@@ -13,9 +24,7 @@ if LOCAL_USER == None or LOCAL_USER == "":
 
 HOME_PATH = os.path.expanduser("~" + LOCAL_USER)
 
-f = open(HOME_PATH + "/.onedrive/user.conf", "r")
-CONF = yaml.safe_load(f)
-f.close()
+load_conf()
 
 QUOTA = {"free": 0, "total": 0}
 
