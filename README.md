@@ -1,90 +1,139 @@
-# onedrive-d
+onedrive-d
+==========
 
-A Microsoft OneDrive client on Linux desktop environment, written in Py3k.
+A Microsoft OneDrive desktop client / daemon on Linux, written in Python 3.
 
-**NOTE: VERSION 0.85 IS DEPRECATED**
+## Note for this branch
 
-**NOTE: VERSION 1.0 IS STILL IN DEVELOPMENT**
+This branch experiments with daemonization of onedrive-d process.
 
-## Introduction
+## Install
 
-The branch `1.0-dev` is totally rewritten in Py3k, thereby finishing the features
-that are unable or itchy to implement in previous, experimental versions.
+Steps 1, 2, and 5 need to be done manually. For steps 3 and 4, the script file `install.sh` will handle the work automatically.
 
-### TODO Lists
+(1) Always uninstall older versions before installing newer ones
 
- - [X] A simple and light-weight Live Connect API written in Py3k
- - [X] Support both GUI and command-line interfaces
- 	 - [X] Command-line preference dialog
- 	 - [ ] Gtk preference Dialog
- 	 - [X] Command-line observer (no-observer mode)
- 	 - [ ] Gtk observer
- - [X] Easily customizable ignore list
- - [ ] Installation scripts
+```bash
+# To remove onedrive-d < 1.0
+sudo pip uninstall onedrive-d
+# To remove onedrive-d >= 1.0
+sudo pip3 uninstall onedrive-d
 
-## Installation
+# Remove residual config files
+rm -rfv ~/.onedrive
+```
 
-Run command `./setup.sh inst` (planned)
+(2) Grab the source code
 
-## Uninstallation
+```bash
+git clone https://github.com/xybu/onedrive-d.git
+cd onedrive-d
+```
 
-Run command `./setup.sh remove` (planned)
+Or you can browse https://github.com/xybu/onedrive-d and download the ZIP file manually.
 
-## Approaches
+(3) Pre-requisites
 
-The program consists of two parts, *main* and *prefs*. Both parts can run with and without GUI The program can run with and without GUI.
+Your local filesystem must store UTC timestamps, not local time. This is true for most Unix filesystems.
 
-The GUI library planned to use is `PyGI`.
+onedrive-d requires Python3 intepreter. If Python version is older than 3.4, `python3-pip` is also required.
 
-### Architecture
+Python3 intepreter must use Unicode mode (default for most Linux distro) otherwise its string datatype won't work.
 
-There are two entry points in the program: `onedrive-d` and `onedrive-pref`:
+The daemon package (`daemonocle`) has a Python dependency `psutil`, which requires system package `python3-dev` installed. If installation fails because of missing `<Python.h>`, check if `python3-dev` package is installed. Not all Linux distro ship this package by default. Pay extra attention to this if your desktop environment is MATE (i.e., if your distribute is Linux Mint or Ubuntu MATE, etc.).
 
- * `onedrive-d` deals with synchronization.
- * `onedrive-pref` updates the preferences.
+For GUI component to work, Python3 binding of GObject (`python3-gi` package for Debian/Ubuntu, `pygobject3` for Fedora, `python-gobject` for Arch, and `python3-gobject` for OpenSUSE) is needed. [Refer to this article if you want to build PyGObject from source.](https://python-gtk-3-tutorial.readthedocs.org/en/latest/install.html)
 
-Both commands support two arguments: `--no-gui` (use command-line interface) and `--help` (list all supported arguments).
+Another recommended package is `inotify-tools` (for most package managers), which contains command `inotifywait`. If this command is available on the system, the real-time file system monitoring thread will be enabled. Otherwise the synchronization is performed every certain amount of time (configurable).
 
-Besides, `onedrive-pref --log-out` will log out the current user.
+(4) Install onedrive-d
 
-#### onedrive-d
+```bash
+# Register package
+sudo python3 setup.py install
 
-For `onedrive-d`, there are three major threads:
+# Clean temporary files
+sudo python3 setup.py clean
 
- * The *MainThread* initializes the process and communicates with OS.
- * The *daemon* thread syncs the local repository with the OneDrive server and issues events to its observers;
- * The *observer* thread observes and handles events from the daemon.
- 	 * The observer may be hooked with either `default` or `gtk` event handlers, depending on the existence of `--no-gui`.
+# Create settings dir
+mkdir ~/.onedrive
+cp ./onedrive_d/res/default_ignore.ini ~/.onedrive/ignore_v2.ini
 
-#### onedrive-pref
+# Create log file
+sudo touch /var/log/onedrive_d.log
+# you may need to change `whoami` to your username
+sudo chown `whoami` /var/log/onedrive_d.log
+```
 
-## ChangeLog
+(5) Configure / start onedrive-d
 
-### 1.0.0-dev
+```bash
+# First read help info
+onedrive-pref --help
+onedrive-d --help
 
- * Rewrite the program in Python 3.
- * Built-in UTF-8 support.
- * Detachable UI components.
- * Better ignore list feature.
- * And much more...
+# Run config program with CLI
+onedrive-pref
+# Or run with GUI
+onedrive-pref --ui=gtk
 
-## FAQ
+# Run onedrive-d
+# start as a daemon
+onedrive-d start
+# or start as a regular process
+onedrive-d start --debug
+```
 
-### Why are my files / dirs renamed to add *_conflict?
+## Run without installation
 
-For case conflicts, since NTFS is case-INsensitive, the local 
-repository cannot have two files whose names only differ in cases, say, `hello.c`
-and `Hello.c`. In this case one of them will be renamed `hello (case_conflict_1).c`
-and then get synced.
+To run the source code directly without installing it to the system,
+do steps 1 to 3 in *Installation* section, and copy config files by
 
-For type conflicts, if the remote entry and local entry have the same
-name but different types, say, the local path `~/OneDrive/doc` is a file
-while in OneDrive server `/doc` is a folder, the local one will get renamed.
+```bash
+mkdir ~/.onedrive
+cp ./onedrive_d/res/default_ignore.ini ~/.onedrive/ignore_v2.ini
 
-### What is the reference environment?
+# Create log file if you need to run onedrive-d as daemon
+sudo touch /var/log/onedrive_d.log
+# you may need to change `whoami` to your username
+sudo chown `whoami` /var/log/onedrive_d.log
+```
 
-The program is tested on latest Xubuntu 64-bit and should work on other Debian/Ubuntu variants.
+Now you can run the program by commands
 
-## Contact
+```bash
+# assume you are in "onedrive-d" folder that contains "onedrive_d" folder.
 
-Xiangyu Bu
+# equivalent to `onedrive-pref` command
+python3 -m onedrive_d.od_pref --help
+
+# equivalent to `onedrive-d` command
+python3 -m onedrive_d.od_main --help
+```
+
+Note that the commands above are no longer valid after installing the package to the system.
+
+## Remove
+
+Refer to step 1 of section "Installation".
+
+## Notes for Users
+
+### Data Integrity
+
+ * Files and directories "deleted" locally can be found in Trash.
+ * Files and directories "deleted" remotely can be found in OneDrive recycle bin.
+ * Files overwritten remotely can be recovered by OneDrive file version feature.
+ * onedrive-d only performs overwriting when it is 100% sure one file is older than its local/remote counterpart.
+
+### Uploading / Downloading by Blocks
+
+When file size exceeds an amount (e.g., 8 MiB), onedrive-d will choose to upload / download it by blocks of smaller size (e.g., 512 KiB). This results in smaller cost (thus better reliability) when recovering from network failures, but more HTTP requests may slow down the process. Tweak the parameters to best fit your network condition.
+
+### Copying and Moving Files and Folders
+
+Because the various behaviors of file managers on Linux, it is hard to determine what actions a user performed based on the log of `inotifywait`. We adopt a very conservative strategy to judge if a file is moved within local OneDrive folder. In most cases file moving results in removing the old path and uploading to the new path. This kinds of wastes network traffic.
+
+Most file managers, including `cp` command, do not copy file attributes like mtime. `inotifywait` reports file writing on copy completion. This makes it infeasible to check if the file writing is a "copy" action. As a result, file copying is also treated as uploading.
+
+Things are even worse when one copies / moves a directory. In most cases the mtime attribute will be changed, resulting in onedrive-d uploading the whole folder.
